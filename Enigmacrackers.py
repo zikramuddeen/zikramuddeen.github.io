@@ -1,5 +1,11 @@
-import dotenv/config
-import generate from random-words
+from dotenv import load_dotenv
+from bip_utils import (
+    Bip39MnemonicGenerator,
+    Bip39SeedGenerator,
+    Bip44,
+    Bip44Coins,
+    Bip44Changes,
+    Bip39WordsNum,import generate from random-words
 import ethers from ethers
 import axios from axios
 import fs from fs
