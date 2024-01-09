@@ -1,9 +1,9 @@
-import 'dotenv/config';
-import { generate } from 'random-words';
-import { ethers } from 'ethers';
-import axios from 'axios';
-import fs from 'fs';
-import bip39 from 'bip39'; // Added the bip39 library
+import dotenv/config
+import generate from random-words
+import ethers from ethers
+import axios from axios
+import fs from fs
+import bip39 from bip39 // Added the bip39 library
 
 // Check if required environment variables are present and not empty
 if (!process.env.ETHERSCAN_KEY || !process.env.BSCSCAN_KEY || !process.env.POLYGONSCAN_KEY || !process.env.ARBISCAN_KEY || !process.env.OPTIMISM_ETHERSCAN_KEY) {
