@@ -5,7 +5,7 @@ from bip_utils import (
     Bip44,
     Bip44Coins,
     Bip44Changes,
-    Bip39WordsNum,
+    Bip39WordsNum)
 import generate from random-words
 import ethers from ethers
 import axios from axios
