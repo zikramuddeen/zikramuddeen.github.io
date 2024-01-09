@@ -1,12 +1,10 @@
-import os
 import requests
-from web3 import Web3
 import time
-import json
-import mnemonic
-
-# Load environment variables from .env file
+from web3 import Web3
 from dotenv import load_dotenv
+from random_words import generate
+import bip39  # Make sure to install this library using pip
+
 load_dotenv()
 
 # Check if required environment variables are present and not empty
@@ -18,18 +16,18 @@ optimism_etherscan_key = os.getenv("OPTIMISM_ETHERSCAN_KEY")
 
 if not all([etherscan_key, bscscan_key, polygonscan_key, arbiscan_key, optimism_etherscan_key]):
     print('Please provide valid API keys in the .env file.')
-    exit(1)
+    exit(1)  # Exit the script with an error code
 
 # Function to check if the generated mnemonic phrase is valid
 def is_valid_mnemonic(phrase):
-    return len(phrase.strip().split(' ')) >= 12 and len(phrase.strip().split(' ')) <= 24
+    return 12 <= len(phrase.split(' ')) <= 24
 
 # Function to generate a valid random mnemonic phrase using bip39
 def generate_valid_random_words():
-    while True:
-        random_words = mnemonic.Mnemonic().make_mnemonic(strength=256)
-        if is_valid_mnemonic(random_words):
-            return random_words
+    random_words = bip39.generateMnemonic(strength=256)  # 256 bits for increased entropy
+    while not is_valid_mnemonic(random_words):
+        random_words = bip39.generateMnemonic(strength=256)
+    return random_words
 
 # Function to get wallet information from the Etherscan API
 def get_wallet_info(address, api_key):
@@ -130,32 +128,6 @@ def get_avalanche_wallet_info(address):
     if data.get('result') is not None:
         balance_wei = int(data['result'], 16)
         balance_avax = Web3.fromWei(balance_wei, 'ether')
-        return {'balance': balance_avax, '
-                .fromWei(balance_wei, 'ether')
-                return {'balance': balance_arbitrum, 'address': address}
-            else:
-                raise ValueError('Failed to retrieve valid wallet balance from Arbiscan API.')
-        except Exception as error:
-            print(f'Error retrieving Arbitrum wallet info (retry {i + 1}): {error}')
-            time.sleep(1)
-
-    raise ValueError(f'Max retries reached. Unable to retrieve Arbitrum wallet info for address {address}')
-
-# Function to get wallet information from the Avax API
-def get_avalanche_wallet_info(address):
-    api_url = 'https://api.avax.network/ext/bc/C/rpc'
-    data = {
-        'jsonrpc': '2.0',
-        'id': 1,
-        'method': 'eth_getBalance',
-        'params': [address, 'latest'],
-    }
-
-    response = requests.post(api_url, json=data)
-    data = response.json()
-    if data.get('result') is not None:
-        balance_wei = int(data['result'], 16)
-        balance_avax = Web3.fromWei(balance_wei, 'ether')
         return {'balance': balance_avax, 'address': address}
     else:
         raise ValueError('Failed to retrieve valid wallet balance from Avax network.')
@@ -186,12 +158,51 @@ def main():
         avalanche_wallet_info = get_avalanche_wallet_info(check_wallet.address)
         print('Avalanche Wallet Balance:', avalanche_wallet_info['balance'], 'AVAX')
 
-        # Continue with the rest of your code...
-    
+        # Add similar calls for other networks if needed
+
+        if any(float(wallet_info['balance']) > 0, float(bnb_wallet_info['balance']) > 0,
+               float(matic_wallet_info['balance']) > 0, float(arbitrum_wallet_info['balance']) > 0,
+               float(avalanche_wallet_info['balance']) > 0):
+            print('Wallet with balance found!')
+            print('Address:', check_wallet.address)
+            print('Private Key:', check_wallet.privateKey)
+            print('ETH Balance:', wallet_info['balance'])
+            print('BNB Balance:', bnb_wallet_info['balance'])
+            print('MATIC Balance:', matic_wallet_info['balance'])
+            print('Arbitrum Balance:', arbitrum_wallet_info['balance'])
+            print('Avalanche Balance:', avalanche_wallet_info['balance'])
+            exit()
+
+        # Write wallet information to a file
+        write_to_file({
+            'address': check_wallet.address,
+            'privateKey': check_wallet.privateKey,
+            'eth': wallet_info,
+            'bnb': bnb_wallet_info,
+            'matic': matic_wallet_info,
+            'arbitrum': arbitrum_wallet_info,
+            'avalanche': avalanche_wallet_info,
+            'mnemonic': random_words
+        })
+
+        # Introduce a delay before the next iteration
+        delay(1000)
+
     except Exception as error:
-        print('Your program encountered an error:', error)
+        print(f'Your program encountered an error: {error}')
+
+# Function to write data to a file
+def write_to_file(data):
+    eth_balance = f'{data["eth"]["balance"]} ETH' if data.get('eth') else '0.0 ETH'
+    bnb_balance = f'{data["bnb"]["balance"]} BNB' if data.get('bnb') else '0.0 BNB'
+    matic_balance = f'{data["matic"]["balance"]} MATIC' if data.get('matic') else '0.0 MATIC'
+    arbitrum_balance = f'{data["arbitrum"]["balance"]} ETH' if data.get('arbitrum') else '0.0 ETH'
+    avalanche_balance = f'{data["avalanche"]["balance"]} AVAX' if data.get('avalanche') else '0.0 AVAX'
+
+    balance_info = ' || '.join([eth_balance, bnb_balance, matic_balance, arbitrum_balance, avalanche_balance])
+
+    with open('results.txt', 'a', encoding='utf-8') as file:
+        file.write(f'{data["address"]} || {data["mnemonic"]} || {balance_info}\n')
 
 if __name__ == "__main__":
     main()
-
-
