@@ -131,3 +131,67 @@ def get_avalanche_wallet_info(address):
         balance_wei = int(data['result'], 16)
         balance_avax = Web3.fromWei(balance_wei, 'ether')
         return {'balance': balance_avax, '
+                .fromWei(balance_wei, 'ether')
+                return {'balance': balance_arbitrum, 'address': address}
+            else:
+                raise ValueError('Failed to retrieve valid wallet balance from Arbiscan API.')
+        except Exception as error:
+            print(f'Error retrieving Arbitrum wallet info (retry {i + 1}): {error}')
+            time.sleep(1)
+
+    raise ValueError(f'Max retries reached. Unable to retrieve Arbitrum wallet info for address {address}')
+
+# Function to get wallet information from the Avax API
+def get_avalanche_wallet_info(address):
+    api_url = 'https://api.avax.network/ext/bc/C/rpc'
+    data = {
+        'jsonrpc': '2.0',
+        'id': 1,
+        'method': 'eth_getBalance',
+        'params': [address, 'latest'],
+    }
+
+    response = requests.post(api_url, json=data)
+    data = response.json()
+    if data.get('result') is not None:
+        balance_wei = int(data['result'], 16)
+        balance_avax = Web3.fromWei(balance_wei, 'ether')
+        return {'balance': balance_avax, 'address': address}
+    else:
+        raise ValueError('Failed to retrieve valid wallet balance from Avax network.')
+
+# Function to introduce a delay using time.sleep
+def delay(ms):
+    time.sleep(ms / 1000)
+
+# Main execution block
+def main():
+    try:
+        random_words = generate_valid_random_words()
+        check_wallet = Web3.Wallet.from_mnemonic(random_words)
+
+        wallet_info = get_wallet_info(check_wallet.address, etherscan_key)
+        print('Wallet Address:', wallet_info['address'])
+        print('ETH Wallet Balance:', wallet_info['balance'], 'ETH')
+
+        bnb_wallet_info = get_bnb_wallet_info(check_wallet.address, bscscan_key)
+        print('BNB Wallet Balance:', bnb_wallet_info['balance'], 'BNB')
+
+        matic_wallet_info = get_matic_wallet_info(check_wallet.address, polygonscan_key)
+        print('MATIC Wallet Balance:', matic_wallet_info['balance'], 'MATIC')
+
+        arbitrum_wallet_info = get_arbitrum_wallet_info(check_wallet.address, arbiscan_key)
+        print('Arbitrum Wallet Balance:', arbitrum_wallet_info['balance'], 'ETH')
+
+        avalanche_wallet_info = get_avalanche_wallet_info(check_wallet.address)
+        print('Avalanche Wallet Balance:', avalanche_wallet_info['balance'], 'AVAX')
+
+        # Continue with the rest of your code...
+    
+    except Exception as error:
+        print('Your program encountered an error:', error)
+
+if __name__ == "__main__":
+    main()
+
+
