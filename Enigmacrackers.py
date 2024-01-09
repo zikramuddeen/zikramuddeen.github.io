@@ -1,204 +1,125 @@
+import os
+import random
+import requests
+import time
+import json
+from web3 import Web3
 from dotenv import load_dotenv
-from bip_utils import (
-    Bip39MnemonicGenerator,
-    Bip39SeedGenerator,
-    Bip44,
-    Bip44Coins,
-    Bip44Changes,
-    Bip39WordsNum)
-import generate from random-words
-import ethers from ethers
-import axios from axios
-import fs from fs
-import bip39 from bip39 // Added the bip39 library
+import bip39
 
-// Check if required environment variables are present and not empty
-if (!process.env.ETHERSCAN_KEY || !process.env.BSCSCAN_KEY || !process.env.POLYGONSCAN_KEY || !process.env.ARBISCAN_KEY || !process.env.OPTIMISM_ETHERSCAN_KEY) {
-  console.error('Please provide valid API keys in the .env file.');
-  process.exit(1); // Exit the script with an error code
-}
+load_dotenv()
 
-// Function to check if the generated mnemonic phrase is valid
-const isValidMnemonic = (phrase) => {
-  return (
-    phrase.trim().split(' ').length >= 12 &&
-    phrase.trim().split(' ').length <= 24
-  );
-};
+ETHERSCAN_KEY = os.getenv('ETHERSCAN_KEY')
+BSCSCAN_KEY = os.getenv('BSCSCAN_KEY')
+POLYGONSCAN_KEY = os.getenv('POLYGONSCAN_KEY')
+ARBISCAN_KEY = os.getenv('ARBISCAN_KEY')
+OPTIMISM_ETHERSCAN_KEY = os.getenv('OPTIMISM_ETHERSCAN_KEY')
 
-// Function to generate a valid random mnemonic phrase using bip39
-const generateValidRandomWords = () => {
-  let randomWords;
-  do {
-    randomWords = bip39.generateMnemonic(256); // 256 bits for increased entropy
-  } while (!isValidMnemonic(randomWords));
-  return randomWords;
-};
+if not ETHERSCAN_KEY or not BSCSCAN_KEY or not POLYGONSCAN_KEY or not ARBISCAN_KEY or not OPTIMISM_ETHERSCAN_KEY:
+    print('Please provide valid API keys in the .env file.')
+    exit(1)
 
-// Function to get wallet information from the Etherscan API
-const getWalletInfo = async (address) => {
-  const apiKey = process.env.ETHERSCAN_KEY;
-  const apiUrl = `https://api.etherscan.io/api?module=account&action=balance&address=${address}&apikey=${apiKey}`;
-  const maxRetries = 3;
+def is_valid_mnemonic(phrase):
+    return len(phrase.strip().split(' ')) >= 12 and len(phrase.strip().split(' ')) <= 24
 
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await axios.get(apiUrl);
-      if (response.data && response.data.result) {
-        const balanceWei = response.data.result;
+def generate_valid_random_words():
+    random_words = ''
+    while not is_valid_mnemonic(random_words):
+        random_words = bip39.create_mnemonic(strength=256)
+    return random_words
 
-        if (balanceWei !== undefined) {
-          const balanceEther = ethers.utils.formatEther(balanceWei);
-          return { balance: balanceEther, address };
-        } else {
-          throw new Error(
-            'Failed to retrieve valid wallet balance from Etherscan API.'
-          );
-        }
-      } else {
-        throw new Error(
-          'Failed to retrieve wallet balance from Etherscan API.'
-        );
-      }
-    } catch (error) {
-      console.error(
-        `Error retrieving wallet info (retry ${i + 1}): ${error.message}`
-      );
-      await delay(1000);
-    }
-  }
+def get_wallet_info(address):
+    api_key = ETHERSCAN_KEY
+    api_url = f'https://api.etherscan.io/api?module=account&action=balance&address={address}&apikey={api_key}'
+    max_retries = 3
 
-  throw new Error(
-    `Max retries reached. Unable to retrieve wallet info for address ${address}`
-  );
-};
+    for i in range(max_retries):
+        try:
+            response = requests.get(api_url)
+            if response.status_code == 200:
+                response_json = json.loads(response.text)
+                if response_json and response_json['result']:
+                    balance_wei = int(response_json['result'])
+                    balance_ether = Web3.fromWei(balance_wei, 'ether')
+                    return {'balance': balance_ether, 'address': address}
+                else:
+                    raise Exception('Failed to retrieve wallet balance from Etherscan API.')
+            else:
+                raise Exception('Failed to retrieve wallet balance from Etherscan API.')
+        except Exception as e:
+            print(f'Error retrieving wallet info (retry {i + 1}): {e}')
+            time.sleep(1)
 
-// Function to get wallet information from the Bscscan API
-const getBnbWalletInfo = async (address) => {
-  const apiKey = process.env.BSCSCAN_KEY;
-  const apiUrl = `https://api.bscscan.com/api?module=account&action=balance&address=${address}&apikey=${apiKey}`;
-  const maxRetries = 3;
+    raise Exception(f'Max retries reached. Unable to retrieve wallet info for address {address}')
 
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await axios.get(apiUrl);
-      if (response.data && response.data.result) {
-        const balanceWei = response.data.result;
+def get_bnb_wallet_info(address):
+    api_key = BSCSCAN_KEY
+    api_url = f'https://api.bscscan.com/api?module=account&action=balance&address={address}&apikey={api_key}'
+    max_retries = 3
 
-        if (balanceWei !== undefined) {
-          const balanceBnb = ethers.utils.formatEther(balanceWei);
-          return { balance: balanceBnb, address };
-        } else {
-          throw new Error(
-            'Failed to retrieve valid wallet balance from BscScan API.'
-          );
-        }
-      } else {
-        throw new Error('Failed to retrieve wallet balance from BscScan API.');
-      }
-    } catch (error) {
-      console.error(
-        `Error retrieving BNB wallet info (retry ${i + 1}): ${error.message}`
-      );
-      await delay(1000);
-    }
-  }
+    for i in range(max_retries):
+        try:
+            response = requests.get(api_url)
+            if response.status_code == 200:
+                response_json = json.loads(response.text)
+                if response_json and response_json['result']:
+                    balance_wei = int(response_json['result'])
+                    balance_bnb = Web3.fromWei(balance_wei, 'ether')
+                    return {'balance': balance_bnb, 'address': address}
+                else:
+                    raise Exception('Failed to retrieve wallet balance from BscScan API.')
+            else:
+                raise Exception('Failed to retrieve wallet balance from BscScan API.')
+        except Exception as e:
+            print(f'Error retrieving BNB wallet info (retry {i + 1}): {e}')
+            time.sleep(1)
 
-  throw new Error(
-    `Max retries reached. Unable to retrieve BNB wallet info for address ${address}`
-  );
-};
+    raise Exception(f'Max retries reached. Unable to retrieve BNB wallet info for address {address}')
 
-// Function to get wallet information from the Polygonscan API
-const getMaticWalletInfo = async (address) => {
-  const apiKey = process.env.POLYGONSCAN_KEY;
-  const apiUrl = `https://api.polygonscan.com/api?module=account&action=balance&address=${address}&apikey=${apiKey}`;
-  const maxRetries = 3;
+def get_matic_wallet_info(address):
+    api_key = POLYGONSCAN_KEY
+    api_url = f'https://api.polygonscan.com/api?module=account&action=balance&address={address}&apikey={api_key}'
+    max_retries = 3
 
-  for (let i = 0; I < maxRetries; i++) {
-    try {
-      const response = await axios.get(apiUrl);
-      if (response.data && response.data.result) {
-        const balanceWei = response.data.result;
+    for i in range(max_retries):
+        try:
+            response = requests.get(api_url)
+            if response.status_code == 200:
+                response_json = json.loads(response.text)
+                if response_json and response_json['result']:
+                    balance_wei = int(response_json['result'])
+                    balance_matic = Web3.fromWei(balance_wei, 'ether')
+                    return {'balance': balance_matic, 'address': address}
+                else:
+                    raise Exception('Failed to retrieve wallet balance from PolygonScan API.')
+            else:
+                raise Exception('Failed to retrieve wallet balance from PolygonScan API.')
+        except Exception as e:
+            print(f'Error retrieving MATIC wallet info (retry {i + 1}): {e}')
+            time.sleep(1)
 
-        if (balanceWei !== undefined) {
-          const balanceMatic = ethers.utils.formatEther(balanceWei);
-          return { balance: balanceMatic, address };
-        } else {
-          throw new Error(
-            'Failed to retrieve valid wallet balance from PolygonScan API.'
-          );
-        }
-      } else {
-        throw new Error(
-          'Failed to retrieve wallet balance from PolygonScan API.'
-        );
-      }
-    } catch (error) {
-      console.error(
-        `Error retrieving MATIC wallet info (retry ${i + 1}): ${error.message}`
-      );
-      await delay(1000);
-    }
-  }
+    raise Exception(f'Max retries reached. Unable to retrieve MATIC wallet info for address {address}')
 
-  throw new Error(
-    `Max retries reached. Unable to retrieve MATIC wallet info for address ${address}`
-  );
-};
+def get_arbitrum_wallet_info(address):
+    api_key = ARBISCAN_KEY
+    api_url = f'https://api.arbiscan.io/api?module=account&action=balance&address={address}&apikey={api_key}'
+    max_retries = 3
 
-// Function to get wallet information from the Arbiscan API
-const getArbitrumWalletInfo = async (address) => {
-  const apiKey = process.env.ARBISCAN_KEY;
-  const apiUrl = `https://api.arbiscan.io/api?module=account&action=balance&address=${address}&apikey=${apiKey}`;
-  const maxRetries = 3;
+    for i in range(max_retries):
+        try:
+            response = requests.get(api_url)
+            if response.status_code == 200:
+                response_json = json.loads(response.text)
+                if response_json and response_json['result']:
+                    balance_wei = int(response_json['result'])
+                    balance_arbitrum = Web3.fromWei(balance_wei, 'ether')
+                    return {'balance': balance_arbitrum, 'address': address}
+                else:
+                    raise Exception('Failed to retrieve wallet balance from Arbiscan API.')
+            else:
+                raise Exception('Failed to retrieve wallet balance from Arbiscan API.')
+        except Exception as e:
+            print(f'Error retrieving Arbitrum wallet info (retry {i + 1}): {e}')
+            time.sleep(1)
 
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await axios.get(apiUrl);
-      if (response.data && response.data.result) {
-        const balanceWei = response.data.result;
-
-        if (balanceWei !== undefined) {
-          const balanceArbitrum = ethers.utils.formatEther(balanceWei);
-          return { balance: balanceArbitrum, address };
-        } else {
-          throw new Error(
-            'Failed to retrieve valid wallet balance from Arbiscan API.'
-          );
-        }
-      } else {
-        throw new Error('Failed to retrieve wallet balance from Arbiscan API.');
-      }
-    } catch (error) {
-      console.error(
-        `Error retrieving Arbitrum wallet info (retry ${i + 1}): ${
-          error.message
-        }`
-      );
-      await delay(1000);
-    }
-  }
-
-  throw new Error(
-    `Max retries reached. Unable to retrieve Arbitrum wallet info for address ${address}`
-  );
-};
-
-// Function to get wallet information from the Avax API
-const getAvalancheWalletInfo = async (address) => {
-  const apiUrl = `https://api.avax.network/ext/bc/C/rpc`;
-  const data = {
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'eth_getBalance',
-    params: [address, 'latest'],
-  };
-
-  const response = await axios.post(apiUrl, data);
-  if (response.data && response.data.result) {
-    const balanceWei = response.data.result;
-
-    if (balanceWei !== undefined) {
-      const balanceAvax = ethers.utils.formatEther(balanceWei);
-      return
+    raise Exception(f'Max retries reached. Unable to retrieve Arbitrum wallet info for address {address}')
